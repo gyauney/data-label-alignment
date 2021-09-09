@@ -4,7 +4,7 @@ Code for "Comparing Text Representations: A Theory-Driven Approach" (EMNLP 2021)
 
 These are instructions for reproducing the paper's main results on natural language inference datasets.
 
-**Coming soon:** code to easily run data-label alignment on your own datasets!
+**Coming soon: code to easily run data-label alignment on your own datasets!**
 
 ### 1. Install requirements.
 
@@ -34,7 +34,7 @@ python finetune.py \
     --lr 2e-5
 ```
 
-The options for the `--dataset` flag are `MNLI`, `QNLI`, and `SNLI`. The path passed to the `--dataset_dir` flag must match the path you downloaded data to in step 3. The `--lr` flag specifies the initial learning rate.
+The options for the `--dataset` flag are `MNLI`, `QNLI`, and `SNLI`. The path passed to the `--dataset_dir` flag must match the path you downloaded data to in step 2. The `--lr` flag specifies the initial learning rate.
 
 You can skip this step if you wish to only evaluate baseline non-contextual and pre-trained MLM contextual embeddings.
 
