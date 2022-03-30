@@ -6,6 +6,7 @@ import sys
 import math
 from collections import defaultdict
 import functools
+import operator
 
 from llm_utils import get_contextual_embeddings_batched, \
                       get_contextual_embeddings_batched_just_CLS_token, \
@@ -60,16 +61,18 @@ def read_qnli(dataset_dir, concatenate_pairs):
 def read_mnli(dataset_dir, concatenate_pairs):
     # 268 duplicates found by character histogram comparison after preprocessing
     # + 721 duplicates found by character histogram comparison after removing words not in GloVe/GloVe-SIF vocabularies
-    with open('duplicate-doc-ids/mnli-duplicate-ids.json', 'r') as f:
-        ids_to_skip = set(json.load(f))
+    # with open('duplicate-doc-ids/mnli-duplicate-ids.json', 'r') as f:
+    #     ids_to_skip = set(json.load(f))
 
-    print('Skipping {} duplicates'.format(len(ids_to_skip)))
+    ids_to_skip = set()
 
-    # + skip the the 10% of training examples used for fine-tuning
-    with open('./fine-tuning-doc-ids/roberta-large-mnli_fine-tuned.json', 'r') as f:
-        # get just the first id
-        ids_used_for_training = [first for first, _, _ in json.load(f)]
-    ids_to_skip.update(ids_used_for_training)
+    # print('Skipping {} duplicates'.format(len(ids_to_skip)))
+
+    # # + skip the the 10% of training examples used for fine-tuning
+    # with open('./fine-tuning-doc-ids/roberta-large-mnli_fine-tuned.json', 'r') as f:
+    #     # get just the first id
+    #     ids_used_for_training = [first for first, _, _ in json.load(f)]
+    # ids_to_skip.update(ids_used_for_training)
 
     print('Skipping {} total'.format(len(ids_to_skip)))
 
@@ -200,12 +203,13 @@ def construct_bags_of_words(text, vocab_fn):
 
     print('Number of words in full vocabulary: {}'.format(len(vocabulary)))
 
+    
     vectorizer = CountVectorizer(vocabulary=vocabulary)
     X = vectorizer.fit_transform(text)
     features = vectorizer.get_feature_names()
     docs_by_features = X.toarray().astype(np.float64)
     print('Total number of word types: {}'.format(len(features)))
-    
+
     return docs_by_features
 
 def save_full_bag_of_words_vocab(text, vocab_fn):
@@ -391,6 +395,75 @@ def load_contextual_embeddings(dataset, representation, dataset_dir, dataset_rea
 
     return ids, docs_by_features, labels
 
+
+def load_bag_of_words_custom_data(ids, text, labels, dataset_dir):
+    # concatenate text if each example contains multiple texts
+    if isinstance(text[0], list):
+        text = [' '.join(t) for t in text]
+
+    vocab_fn = '{}/all-features.json'.format(dataset_dir)
+    if not os.path.exists(vocab_fn):
+        save_full_bag_of_words_vocab(text, vocab_fn)
+
+    print('Using {} documents.'.format(len(text)))
+    # make sure every selected example is unique
+    #assert len(downsample_idxs) == len(set(downsample_idxs))
+
+    docs_by_features = construct_bags_of_words(text, vocab_fn)
+
+
+
+    # make sure there are no zero-length documents
+    ids_to_keep = np.where(np.sum(docs_by_features, axis=1) >= 0)[0]
+    assert ids_to_keep.shape[0] == docs_by_features.shape[0]
+
+    return normalize_data(docs_by_features)
+
+def load_contextual_embeddings_custom_data(text, dataset_dir, representation, use_gpu):
+    assert isinstance(text[0], list)
+    assert len(text[0]) == 2
+
+    contexts = [c for c, _ in text]
+    questions = [q for _, q in text]
+    print('Using {} documents.'.format(len(text)))
+
+    # get the contextual embeddings
+    docs_by_features = get_contextual_embeddings_batched_just_CLS_token(contexts, questions, representation, use_gpu)
+
+    return normalize_data(docs_by_features)
+
+def load_custom_data(representation, ids, text, labels, dataset_dir, use_gpu):
+    if representation == 'bag-of-words':
+        return load_bag_of_words_custom_data(ids, text, labels, dataset_dir)
+    elif representation == 'roberta-large':
+        return load_contextual_embeddings_custom_data(text, dataset_dir, 'roberta-large', use_gpu)
+    else:
+        print('Representation not supported yet: {}'.format(representation))
+        exit()
+
+
+# requires binary labels
+# data: [{id: id, data: [text1, text2, ...], label: label}]
+# where label can be one of two strings
+def read_raw_data(fn):
+    ids = []
+    text = []
+    labels = []
+    with open(fn, 'r') as f:
+        for d in json.load(f):
+            ids.append(d['id'])
+            text.append(d['data'])
+            labels.append(d['label'])
+    # now convert labels to 0/1
+    unique_labels = sorted(list(set(labels)))
+    if len(unique_labels) != 2:
+        print('Labels must be binary!')
+        print('Labels in dataset: {}'.format(', '.join(unique_labels)))
+        exit()
+    label_to_index = {l: i for i, l in enumerate(unique_labels)}
+    labels = np.array([label_to_index[l] for l in labels])
+    return ids, text, labels
+
 def normalize_data(docs_by_features):
     print('l2-normalizing documents.')
     normalizer = 1.0 / np.linalg.norm(docs_by_features, axis=1)
@@ -455,12 +528,5 @@ def load_data(dataset, representation, dataset_dir, use_gpu, sample_size, specif
 
     docs_by_features = normalize_data(docs_by_features)
     return ids, docs_by_features, labels
-
-
-
-
-
-
-
 
 

@@ -1,12 +1,6 @@
-## data-label-alignment
+# data-label-alignment
 
-Code for "Comparing Text Representations: A Theory-Driven Approach" (EMNLP 2021).
-
-These are instructions for reproducing the paper's main results on natural language inference datasets.
-
-**Coming soon: code to easily run data-label alignment on your own datasets!**
-
-### 1. Install requirements.
+Code for "[Comparing Text Representations: A Theory-Driven Approach](https://aclanthology.org/2021.emnlp-main.449.pdf)" (EMNLP 2021).
 
 This code requires Python 3 (version >= 3.6). Use pip to install requirements:
 
@@ -14,7 +8,62 @@ This code requires Python 3 (version >= 3.6). Use pip to install requirements:
 pip install -r requirements.txt
 ```
 
-### 2. Download NLI datasets:
+## How to get data-label alignment of a new dataset
+
+### 1. Input
+Format your text dataset into a single JSON list that contains text examples and labels.
+Each element of the list corresponds to an example in the dataset and must be a dictionary with three fields: `"id"`, `"data"`, and `"label"`.
+Here's an example of the types for a single-example json file:
+```[{"id": <string>, "data": [<string>, <string>, ...], "label": <string>}]```
+
+- `"id"` can be either a string or a list of strings.
+- `"data"` can also be either a string or a list of two strings.
+If the example contains multiple pieces of text (e.g. as in NLI tasks), then `"data"` can point to a list of strings.
+- `"label"` should be a string, and there must be two strings total across all examples.
+For example, a binarized version of the MNLI task would have `"entailment"` and `"contradiction"` as the two label strings.
+
+An example of 1000 documents from the MNLI dataset can be found in the file `mnli-formatted-sample.json`.
+
+### 2. Running data-label alignment
+
+You'll use `run-on-your-own-data.py` in this step. First, an explanation of arguments:
+- `--sample_size <integer>`: determines how many examples are subsampled from the dataset for analysis. 
+- `--dataset_fn <string>`: the name of the JSON file you constructed in step 1.
+- `--dataset <string>`: the name of the dataset (for saving output)
+- `--run_number <integer>`: an integer to identify where to store the results of this run. You can re-run this script with different run numbers to get different subsamples of a large dataset.
+- `--gpu`: when present, the language model representations are gotten using the GPU. Remove if you don't have a GPU on your machine.
+
+Here's an example of running the script on the included small version of the formatted MNLI dataset, with 1000 examples sampled:
+```
+python run-on-your-own-data.py --sample_size 1000 \
+                               --dataset_fn mnli-formatted-sample.json \
+                               --dataset MNLI \
+                               --run_number 1 \
+                               --gpu
+```
+You can run this command to see some example output graphs.
+
+By default, the script compares the data-dependent complexities of two representations: 1) bag-of-words and 2) RoBERTa-large pre-trained embeddings. It first subsamples a chosen number of examples (with an equal number from each class) and then removes any examples that are duplicates under any of the considered representations. It is important that the classes remain balanced, so we also truncate the larger class after deduplication so that both classes have the same number of examples.
+
+### 3. Output
+
+Four summary graphs are saved in the `graphs` subdirectory:
+
+- `ddc.pdf`: the data-dependent complexity of the true labels for each representation
+- `random.pdf`: the data-dependent complexity of the sampled random labels for each representation
+- `ddc-ratio.pdf`: the ratio between the true and random data-dependent complexities for each representation
+- `ddc-z-score.pdf`: the distance of the true labeling's data-dependent complexity from the expected complexity under random labelings, measured in number of standard deviations of the random complexities
+
+There are also more detailed graphs for each representation that show the distributions of data-dependent complexities from uniform random labels. These are saved in directories with named for the dataset and representation (they have the form `<dataset>-<representation name>`). For interpretations of all of the kinds of graphs, see the discussion of Figure 7 in Section 4 of the [paper](https://aclanthology.org/2021.emnlp-main.449.pdf).
+
+
+
+## Reproducing results from the paper
+
+These are instructions for reproducing the paper's main results on natural language inference datasets.
+
+
+### 1. Download NLI datasets:
 
 - MNLI (298.3 MB): https://dl.fbaipublicfiles.com/glue/data/MNLI.zip 
 - QNLI (10.1 MB): https://dl.fbaipublicfiles.com/glue/data/QNLIv2.zip
@@ -23,7 +72,7 @@ pip install -r requirements.txt
 
 We recommend saving these inside the current directory.
 
-### 3. *Optional:* fine-tune RoBERTa-large on subsets of MNLI, QNLI, SNLI.
+### 2. *Optional:* fine-tune RoBERTa-large on subsets of MNLI, QNLI, SNLI.
 
 Fine-tuning will allow you to use our method to evaluate fine-tuned MLM contextual embeddings. For example:
 
@@ -38,13 +87,13 @@ The options for the `--dataset` flag are `MNLI`, `QNLI`, and `SNLI`. The path pa
 
 You can skip this step if you wish to only evaluate baseline non-contextual and pre-trained MLM contextual embeddings.
 
-### 4. *Optional:* download GloVe embeddings.
+### 3. *Optional:* download GloVe embeddings.
 
 Download pre-trained GloVe embeddings: http://nlp.stanford.edu/data/glove.840B.300d.zip
 
 Unzip and save the text file to a subdirectory with the path: `GloVe/glove.840B.300d.txt`
 
-### 5. Run the code:
+### 4. Run the code:
 
 For example, to run our method on the MNLI dataset represented as BERT contextual embeddings, assuming that `./MNLI` is the path to the dataset downloaded in the previous step and that your machine has a GPU:
 
@@ -87,7 +136,7 @@ To reproduce our main results in figure 8, you will need to run four replicates 
 
 Each run of 20000 samples took several hours on our machine.
 
-### 6. Plot the results:
+### 5. Plot the results:
 
 ```
 python plot-results.py --sample_size 20000

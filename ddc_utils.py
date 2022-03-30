@@ -122,7 +122,7 @@ def plot_ddc_empirical_density(dir_name, title, random_complexities, reference_d
     # the color is an opaque version of the default blue with opacity 0.4 / 0.6
     ax.hist(random_complexities, bins=64, weights=weights, color='#aac8e1', edgecolor='#7eaed2')
     ax.scatter(reference_ddc, 0, s=200, marker='|', clip_on=False, color='black', zorder=10)
-    ax.text(reference_ddc, -0.2, "DDC", transform=ax.get_xaxis_transform(), horizontalalignment='center', fontweight='bold')
+    ax.text(reference_ddc, -0.3, "DDC", transform=ax.get_xaxis_transform(), horizontalalignment='center', fontweight='bold')
     ax.scatter(np.mean(random_complexities), 0, s=200, marker='|', clip_on=False, color='black', zorder=10)
     ax.text(np.mean(random_complexities), -0.2, "E[DDC]", transform=ax.get_xaxis_transform(), horizontalalignment='center', fontweight='bold')
     savefig('{}/DDC-histogram_{}.pdf'.format(dir_name, title), bbox_inches='tight')
@@ -138,7 +138,7 @@ def plot_ddc_empirical_distribution_function(dir_name, title, random_complexitie
     # delete right-most line from histogram to get a line plot
     patches[0].set_xy(patches[0].get_xy()[:-1])
     ax.scatter(reference_ddc, 0, s=100, marker='|', clip_on=False, color='black', zorder=10)
-    ax.text(reference_ddc, -0.2, "DDC", transform=ax.get_xaxis_transform(), horizontalalignment='center', fontweight='bold')
+    ax.text(reference_ddc, -0.3, "DDC", transform=ax.get_xaxis_transform(), horizontalalignment='center', fontweight='bold')
     ax.scatter(np.mean(random_complexities), 0, s=100, marker='|', clip_on=False, color='black', zorder=10)
     ax.text(np.mean(random_complexities), -0.2, "E[DDC]", transform=ax.get_xaxis_transform(), horizontalalignment='center', fontweight='bold')
     # plot the actual estimated probability
